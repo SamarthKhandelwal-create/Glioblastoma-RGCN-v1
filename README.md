@@ -1,8 +1,8 @@
-# Glioblastoma ceRNA Network Analysis
+Glioblastoma ceRNA Network Analysis
 
-This project constructs and analyzes a heterogeneous Competitive Endogenous RNA (ceRNA) network for Glioblastoma Multiforme (GBM) using TCGA data. It integrates data from ENCORI, miRTarBase, and miRNet, creates a graph representation, and trains a Graph Neural Network (RGCN) to predict novel miRNA-target interactions.
+This project constructs and analyzes a heterogeneous Competitive Endogenous RNA (ceRNA) network for Glioblastoma Multiforme (GBM) using TCGA data. It integrates data from ENCORI, miRTarBase, and miRNet, creates a graph representation, and trains a Relational Graph Neural Network (RGCN) to predict novel miRNA-lncRNA interactions.
 
-## Project Structure
+ Project Structure
 
 - `src/`: Source code for the pipeline.
     - `preprocessing/`: Scripts for data fetching and feature engineering.
@@ -12,7 +12,7 @@ This project constructs and analyzes a heterogeneous Competitive Endogenous RNA 
 - `data/`: Input data files (Note: Large files are git-ignored).
 - `results/`: output files, models, and figures.
 
-## Installation
+ Installation
 
 1. Install dependencies:
    ```bash
@@ -20,29 +20,29 @@ This project constructs and analyzes a heterogeneous Competitive Endogenous RNA 
    ```
    *Note: PyTorch Geometric may require specific installation instructions depending on your CUDA version.*
 
-## Usage Pipeline
+ Usage Pipeline
 
-1. **Feature Engineering**:
+1. Feature Engineering:
    ```bash
    python src/preprocessing/build_node_features.py
    ```
 
-2. **Graph Construction**:
+2. Graph Construction:
    ```bash
    python src/graph/build_graph.py
    ```
 
-3. **Model Training**:
+3. Model Training:
    ```bash
    python src/training/train_model.py
    ```
 
-4. **Evaluation**:
+4. Evaluation:
    ```bash
    python src/training/evaluate_model.py
    ```
 
-5. **Inference (Novel Discovery)**:
+5. Inference (Novel Discovery):
    ```bash
    python src/analysis/predict_novel_interactions.py
    ```
