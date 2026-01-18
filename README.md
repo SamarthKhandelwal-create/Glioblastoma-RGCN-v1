@@ -4,13 +4,13 @@ This project constructs and analyzes a heterogeneous Competitive Endogenous RNA 
 
  Project Structure
 
-- `src/`: Source code for the pipeline.
-    - `preprocessing/`: Scripts for data fetching and feature engineering.
-    - `graph/`: Graph construction scripts.
-    - `training/`: Model definition and training loops.
-    - `analysis/`: Evaluation and inference scripts.
-- `data/`: Input data files (Note: Large files are git-ignored).
-- `results/`: output files, models, and figures.
+- `src/`: Source code.
+    - `preprocessing/`: Data fetching and feature engineering.
+    - `graph/`: Graph construction.
+    - `training/`: Model definition and training.
+    - `analysis/`: Evaluation.
+- `data/`: Input data files.
+- `results/`: output files.
 
  Installation
 
@@ -18,8 +18,6 @@ This project constructs and analyzes a heterogeneous Competitive Endogenous RNA 
    ```bash
    pip install -r requirements.txt
    ```
-   *Note: PyTorch Geometric may require specific installation instructions depending on your CUDA version.*
-
  Usage Pipeline
 
 1. Feature Engineering:
