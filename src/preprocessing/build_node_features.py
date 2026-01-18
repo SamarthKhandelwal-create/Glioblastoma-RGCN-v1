@@ -30,7 +30,7 @@ CLINICAL_DATASET = "TCGA.GBM.sampleMap/GBM_clinicalMatrix"
 
 # Feature definitions
 # (Name, XenaField, Comparison_Logic)
-# Logic: (Group1_HighRisk, Group0_LowRisk)
+# Logic: (Group1_HighRisk/Condition, Group0_LowRisk/Control)
 FEATURES = [
     {
         "id": 1, "name": "Age", "field": "age_at_initial_pathologic_diagnosis",
@@ -38,7 +38,7 @@ FEATURES = [
     },
     {
         "id": 2, "name": "Sex", "field": "gender",
-        "type": "categorical", "val_1": "MALE", "val_0": "FEMALE" # check caps
+        "type": "categorical", "val_1": "MALE", "val_0": "FEMALE"
     },
     {
         "id": 3, "name": "Vital", "field": "vital_status",
@@ -50,17 +50,12 @@ FEATURES = [
     },
     {
         "id": 5, "name": "IDH", "field": "G_CIMP_STATUS",
-        "type": "categorical", "val_1": "G-CIMP", "val_0": "non-G-CIMP" # G-CIMP is Mutant (better?), actually G-CIMP is usually better prognosis, but we just need a diff. Let's stick to G-CIMP vs Non.
-        # Wait, usually WT is aggressive. G-CIMP is hypermethylated (mutant-like).
-        # Let's define 1 as Aggressive (Non-G-CIMP) and 0 as G-CIMP if we want consistent risk direction?
-        # Actually user said: IDH Wildtype (Aggressive) vs IDH Mutant.
-        # G-CIMP ~= IDH Mutant. so Non-G-CIMP ~= WT.
-        # So val_1 = "non-G-CIMP", val_0 = "G-CIMP"
+        "type": "categorical", "val_1": "non-G-CIMP", "val_0": "G-CIMP"
+        # non-G-CIMP (~Wildtype) is typically more aggressive than G-CIMP (Mutant)
     },
     {
         "id": 6, "name": "Subtype", "field": "GeneExp_Subtype",
-        "type": "categorical", "val_1": "Mesenchymal", "val_0": "Proneural" # Or just vs Rest? Let's do Mesenchymal vs Not.
-        # Special handler needed for "vs Others"
+        "type": "categorical", "val_1": "Mesenchymal", "val_0": "Proneural" 
     },
     {
         "id": 7, "name": "Radiation", "field": "radiation_therapy",
@@ -69,8 +64,7 @@ FEATURES = [
     {
         "id": 8, "name": "KPS", "field": "karnofsky_performance_score",
         "type": "numeric_binary", "cutoff": 80, "label_1": "Low (<80)", "label_0": "High (>=80)",
-        "invert": True # cutoff logic is > is good. we want 1=Bad usually? or doesn't matter for GCN.
-        # Let's just follow split.
+        "invert": True # Cutoff logic: mask1 = s < cutoff
     },
     {
         "id": 9, "name": "Chemo", "field": "chemo_therapy",
@@ -102,25 +96,17 @@ def load_master_gene_list():
     return combined["ensembl_id"].tolist(), combined
 
 def fetch_counts(samples, genes):
-    import xenaPython as xq
+    """Fetch gene expression counts from Xena Toil hub in chunks."""
     # Fetch in chunks
     print(f"Fetching counts for {len(genes)} genes across {len(samples)} samples...")
     chunk_size = 500
     all_df = []
     
-    # Xena gene ID matching can be tricky. TOIL uses Ensembl without version usually?
-    # Our ensembl_ids might have version.
-    # Let's try to strip versions for query if needed, but TOIL usually has versions format "ENSG.v". 
-    # Let's check a few.
-    # If the previous script worked, genes are correct.
-    
     # Filter for Ensembl IDs only for Xena (skip miRNAs which are 'hsa-mir-...')
-    # miRNAs won't be found in the gene expression dataset anyway.
     ens_genes = [g for g in genes if str(g).startswith("ENSG")]
     
-    print(f"Fetching counts for {len(ens_genes)} ENSG genes (skipping {len(genes)-len(ens_genes)} non-ENSG) across {len(samples)} samples...")
+    print(f"Fetching counts for {len(ens_genes)} ENSG genes (skipping {len(genes)-len(ens_genes)} non-ENSG)...")
     
-    # Only fetch for valid ENSG
     genes_to_fetch = ens_genes
     
     for i in range(0, len(genes_to_fetch), chunk_size):
@@ -128,15 +114,15 @@ def fetch_counts(samples, genes):
         try:
              # probeMap for Toil is usually just the ID
              # Xena returns [metadata, [values]] structure sometimes
-             raw = xq.dataset_probe_values(TOIL_HOST, TOIL_COUNTS, samples, chunk)
+             raw = xp.dataset_probe_values(TOIL_HOST, TOIL_COUNTS, samples, chunk)
              
              values = []
              if raw and isinstance(raw, list):
-                 if len(raw) == len(chunk) and isinstance(raw[0], list): # Standard list of lists?
+                 if len(raw) == len(chunk) and isinstance(raw[0], list): # Standard list of lists
                      values = raw
                  elif len(raw) > 1 and isinstance(raw[1], list) and len(raw[1]) == len(chunk): # Wrapped [meta, data]
                      values = raw[1]
-                 elif len(raw) > 0 and isinstance(raw[0], list) and len(raw[0]) == len(chunk): # Maybe wrapped [data]
+                 elif len(raw) > 0 and isinstance(raw[0], list) and len(raw[0]) == len(chunk): # Wrapped [data]
                      values = raw[0]
                      
              if not values:
@@ -377,12 +363,8 @@ def main():
     else:
         results_matrix["Health"] = 0.0
     
-    # DEBUG: Limit features
-    DEBUG_FEATURES = ["Age", "Sex"] 
-    
     for feat in FEATURES:
         name = feat["name"]
-        # if name not in DEBUG_FEATURES: continue # Skip for debug
         
         print(f"\n--- Processing Feature: {name} ---")
         print(f"  Design META distribution:\n{design_meta[name].value_counts(dropna=False)}")
@@ -391,11 +373,9 @@ def main():
         
         if logfc is not None:
              # This assignment matches index. 
-             # Use .reindex to force alignment with results_matrix (indexes are genes)
-             # logfc only contains ENSG genes found in counts_df.
+             # Use .reindex to force alignment with results_matrix
              aligned_logfc = logfc.reindex(results_matrix.index, fill_value=0.0)
              results_matrix[name] = aligned_logfc
-             # print(f"  [Success] Got {len(logfc)} LogFC values.")
         else:
              print(f"  [Failure] LogFC is None.")
              results_matrix[name] = 0.0 # Fill neutral if failed
