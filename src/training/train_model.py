@@ -6,6 +6,7 @@ import torch_geometric.transforms as T
 from sklearn.metrics import roc_auc_score
 import os
 import sys
+from pathlib import Path
 
 # Allow importing from src
 sys.path.append(os.getcwd())
@@ -70,15 +71,17 @@ print(f"Train Edges: {train_data.edge_index.size(1)}")
 print(f"Val Edges: {val_data.edge_index.size(1)}")
 print(f"Test Edges: {test_data.edge_index.size(1)}")
 
-# --- 3. Model Definition ---
-# Imported from src.model import RGCN_LinkPredictor
+# Dynamically determine number of relations from edge_attr
+num_relations = int(data.edge_attr.max().item()) + 1 if data.edge_attr is not None else 3
+print(f"Number of relation types: {num_relations}")
 
+# Initialize model with correct parameters for RGCN_LinkPredictor
 model = RGCN_LinkPredictor(
-    num_nodes=data.num_nodes,
-    num_features=data.num_features,
-    num_relations=2, # 0: miRNA->mRNA, 1: lncRNA->miRNA
-    hidden_channels=32,
-    out_channels=16
+    num_nodes=data.x.shape[0],
+    in_channels=data.x.shape[1], 
+    hidden_channels=64,
+    out_channels=32,
+    num_relations=num_relations
 ).to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
@@ -125,3 +128,9 @@ print(f'Final Test AUC: {test_auc:.4f}')
 # Save Model
 torch.save(model.state_dict(), "results/gnn_model.pth")
 print("Model saved to results/gnn_model.pth")
+
+# After training loop ends, save the model
+print("\nSaving trained model...")
+model_save_path = Path(GRAPH_PATH).parent / "model.pt"
+torch.save(model.state_dict(), model_save_path)
+print(f"Model saved to: {model_save_path}")
