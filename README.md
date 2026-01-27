@@ -1,21 +1,16 @@
 # Glioblastoma ceRNA Network Analysis
 
-This project constructs and analyzes a heterogeneous Competitive Endogenous RNA (ceRNA) network for Glioblastoma Multiforme (GBM) using TCGA data. It integrates data from ENCORI, miRTarBase, and miRNet, creates a graph representation, and trains a Relational Graph Neural Network (RGCN) to predict novel miRNA-lncRNA interactions.
+RGCN-based link prediction for GBM ceRNA networks using TCGA data.
 
-## Project Structure
+## Structure
 
 ```
-├── src/                    # Source code
-│   ├── preprocessing/      # Data fetching and feature engineering
-│   ├── graph/              # Graph construction
-│   ├── training/           # Model definition and training
-│   └── analysis/           # Evaluation, biomarkers, survival analysis
-├── docs/                   # Documentation
-├── results/                # Output files and artifacts
-├── archive/                # Old scripts and status files (not used)
-├── run_pipeline.py         # Main orchestrator script
-├── verify_graph.py         # Quick graph verification utility
-└── requirements.txt        # Python dependencies
+src/
+  preprocessing/   # Data fetching, feature engineering
+  graph/           # Graph construction  
+  training/        # Model training, cross-validation
+  analysis/        # Biomarker discovery, visualization
+results/           # Output files, trained models
 ```
 
 ## Installation
@@ -24,67 +19,37 @@ This project constructs and analyzes a heterogeneous Competitive Endogenous RNA 
 pip install -r requirements.txt
 ```
 
-## Quick Start
+## Usage
 
-Run the full pipeline:
 ```bash
-python run_pipeline.py
-```
-
-## Usage (Step-by-Step)
-
-### 1. Feature Engineering
-```bash
+# 1. Build node features from TCGA data
 python src/preprocessing/build_node_features.py
-```
 
-### 2. Graph Construction
-```bash
-# Optional: enable miRNA injection
-$env:INJECT_MIRNA='true'  # PowerShell
-# export INJECT_MIRNA=true  # Bash
-
+# 2. Construct heterogeneous graph
 python src/graph/build_graph.py
-```
 
-### 3. Model Training
-```bash
-# Single training run
+# 3. Train model
 python src/training/train_model.py
 
-# Cross-validation
-python src/training/train_cross_validation.py --graph-path results/hetero_graph_GBM.pt --folds 10
-```
+# 4. Run 10-fold cross-validation
+python src/training/train_cross_validation.py --graph-path results/hetero_graph_GBM.pt --outdir results/cv_results --folds 10 --epochs 100
 
-### 4. Analysis
-
-```bash
-# Biomarker discovery
+# 5. Analyze results
 python src/analysis/find_biomarkers.py
-
-# Survival analysis (Kaplan-Meier + Cox regression)
-python src/analysis/survival_analysis.py --offline  # Use --offline for demo mode
-
-# Novel interaction prediction
-python src/analysis/predict_novel_interactions.py
-
-# GO/KEGG enrichment
-python src/analysis/run_enrichment.py
+python src/analysis/visualize_results.py
 ```
 
-### 5. Verification
-```bash
-python verify_graph.py
-```
+## Graph Structure
 
-## Key Outputs
+- **Nodes**: mRNA, lncRNA, miRNA (10-dimensional feature vectors)
+- **Edges**: 
+  - Type 0: miRNA → mRNA (silencing)
+  - Type 1: lncRNA → miRNA (sponging)
+  - Type 2: ceRNA co-regulation (inferred)
 
-| File | Description |
-|------|-------------|
-| `results/hetero_graph_GBM.pt` | PyTorch Geometric graph object |
-| `results/node_features_matrix.csv` | Z-scored node feature matrix |
-| `results/node_mapping.json` | Node index ↔ ID mapping |
-| `results/edge_metadata.csv` | Edge provenance and confidence |
-| `results/biomarkers/` | Biomarker discovery results |
-| `results/survival/` | Survival analysis (KM curves, Cox results) |
-| `results/cv_results/` | Cross-validation fold results |
+## Data Sources
+
+- TCGA-GBM expression and clinical data (via Xena)
+- TargetScan miRNA target predictions
+- ENCORI validated interactions
+
